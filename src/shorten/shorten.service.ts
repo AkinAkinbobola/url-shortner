@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GetShortUrlDto } from './dtos/get-short-url.dto';
 import { configDotenv } from 'dotenv';
@@ -8,7 +8,22 @@ configDotenv();
 
 @Injectable()
 export class ShortenService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) {
+  }
+
+  async getOriginalUrl(shortUrl: string) {
+    const original = await this.prismaService.url.findFirst({
+      where: {
+        shortUrl,
+      },
+    });
+
+    if (!original) throw new NotFoundException('This is not a valid url');
+
+    return {
+      originalUrl: original.originalUrl,
+    };
+  }
 
   async getShortUrl(data: GetShortUrlDto) {
     const { url } = data;
@@ -40,7 +55,7 @@ export class ShortenService {
     await this.prismaService.url.create({
       data: {
         originalUrl: url,
-        shortUrl: `${baseUrl}/${shortUrl}`,
+        shortUrl,
       },
     });
     return {
